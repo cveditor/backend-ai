@@ -5,6 +5,24 @@ const router = express.Router();
 const User = require('../models/User');
 require('dotenv').config();
 
+// Registrazione
+router.post('/register', async (req, res) => {
+  const { username, email, password } = req.body;
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, email, password: hashedPassword });
+
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '12h' });
+
+    res.status(201).json({ token, userId: user.id, username: user.username });
+  } catch (error) {
+    console.error('Errore nella registrazione:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 

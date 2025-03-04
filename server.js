@@ -4,11 +4,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const bodyParser = require('body-parser');
 const cron = require('node-cron');
-
+const cors = require('cors');
 const { syncDatabase } = require('./models');
 const checkAnalyticsThreshold = require('./utils/realtimeNotifications');
 const { handleStripeWebhook } = require('./services/paymentService');
-
+const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const postRoutes = require('./routes/postRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
@@ -24,7 +24,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: process.env.CLIENT_URL ,
     methods: ['GET', 'POST'],
   },
 });
@@ -37,6 +37,7 @@ app.use(bodyParser.raw({ type: 'application/json' }));
 app.post('/api/payments/webhook', handleStripeWebhook);
 
 // Rotte API
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/payments', paymentRoutes);
