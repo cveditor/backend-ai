@@ -8,6 +8,8 @@ const cors = require('cors');
 const { syncDatabase } = require('./models');
 const checkAnalyticsThreshold = require('./utils/realtimeNotifications');
 const { handleStripeWebhook } = require('./services/paymentService');
+
+// Importa le tue route
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const postRoutes = require('./routes/postRoutes');
@@ -22,19 +24,32 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: [process.env.CLIENT_URL], // URL del frontend
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true // Consente l'invio dei cooki
-  },
-});
 
-// Middleware
+// Configura CORS
+const corsOptions = {
+  origin: process.env.CLIENT_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(bodyParser.raw({ type: 'application/json' }));
 
-// Webhook Stripe (JSON raw richiesto da Stripe)
+// Configura Socket.io con CORS
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL,
+    methods: ['GET', 'POST'],
+  },
+});
+
+// Test per verificare se il server risponde
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'CORS configurato correttamente e server attivo!' });
+});
+
+// Webhook Stripe (richiede raw body)
 app.post('/api/payments/webhook', handleStripeWebhook);
 
 // Rotte API
@@ -48,9 +63,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/triggers', triggerRoutes);
 
-// Cron job per controllare le analytics (ogni minuto)
+// Cron job per analytics
 cron.schedule('*/1 * * * *', () => {
-  console.log('🔔 Controllo delle analytics in corso...');
+  console.log('🔔 Controllo delle analytics...');
   checkAnalyticsThreshold(io);
 });
 
@@ -63,7 +78,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Sincronizza il DB prima di avviare il server
+// Avvio del server e sincronizzazione del DB
 const startServer = async () => {
   try {
     await syncDatabase();
@@ -73,7 +88,7 @@ const startServer = async () => {
     });
   } catch (err) {
     console.error('❌ Errore nell’avvio del server:', err.message);
-    process.exit(1); // Chiude l'app se il DB non è connesso
+    process.exit(1);
   }
 };
 
