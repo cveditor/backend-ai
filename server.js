@@ -27,9 +27,9 @@ const server = http.createServer(app);
 
 // Configura CORS
 const corsOptions = {
-  origin: process.env.CLIENT_URL,
+  origin: [process.env.CLIENT_URL],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
+  credentials: true, // Abilita credenziali come cookie/sessione
 };
 
 app.use(cors(corsOptions));
@@ -38,10 +38,7 @@ app.use(bodyParser.raw({ type: 'application/json' }));
 
 // Configura Socket.io con CORS
 const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ['GET', 'POST'],
-  },
+  cors: corsOptions,
 });
 
 // Test per verificare se il server risponde
