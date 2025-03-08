@@ -38,7 +38,11 @@ app.use(bodyParser.raw({ type: 'application/json' }));
 
 // Configura Socket.io con CORS
 const io = new Server(server, {
-  cors: corsOptions,
+  cors: {
+    origin: [process.env.CLIENT_URL], // frontend URL
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
 });
 
 // Test per verificare se il server risponde
