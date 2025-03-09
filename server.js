@@ -8,6 +8,8 @@ const cors = require('cors');
 const { syncDatabase } = require('./models');
 const checkAnalyticsThreshold = require('./utils/realtimeNotifications');
 const { handleStripeWebhook } = require('./services/paymentService');
+const passport = require('passport');
+const session = require('express-session');
 
 // Importa le tue route
 const authRoutes = require('./routes/authRoutes');
@@ -35,6 +37,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(bodyParser.raw({ type: 'application/json' }));
+app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Configura Socket.io con CORS
 const io = new Server(server, {
