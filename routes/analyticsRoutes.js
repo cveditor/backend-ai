@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
-const { Analytics, SocialPost } = require('../models');
+const { Analytics } = require('../models/index');
+const { SocialPost } = require('../models/index');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.get('/user', authMiddleware, async (req, res) => {
