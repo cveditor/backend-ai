@@ -70,16 +70,16 @@ router.get('/instagram/callback',
 );
 
 // TikTok
-router.get('/tiktok',
-  passport.authenticate('tiktok')
-);
+// Avvia autenticazione TikTok
+router.get('/tiktok', passport.authenticate('tiktok'));
 
-router.get('/tiktok/callback',
-  passport.authenticate('tiktok', { failureRedirect: '/login' }),
-  (req, res) => {
-    const token = jwt.sign({ userId: req.user.id }, process.env.JWT_SECRET, { expiresIn: '12h' });
-    res.redirect(`${process.env.CLIENT_URL}/login?token=${token}&userId=${req.user.id}&username=${req.user.username}`);
-  }
-);
+// Callback di TikTok
+router.get('/tiktok/callback', passport.authenticate('tiktok', {
+  failureRedirect: `${process.env.CLIENT_URL}/login`,
+}), (req, res) => {
+  const token = req.user.generateAuthToken();
+  res.redirect(`${process.env.CLIENT_URL}/login?token=${token}&userId=${req.user.id}&username=${req.user.username}`);
+});
+
 
 module.exports = router;
