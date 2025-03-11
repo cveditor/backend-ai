@@ -43,30 +43,43 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Errore nel login' });
   }
 });
+// Google
+router.get('/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
 
-// Google OAuth
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.id }, process.env.JWT_SECRET, { expiresIn: '12h' });
+    res.redirect(`${process.env.CLIENT_URL}/login?token=${token}&userId=${req.user.id}&username=${req.user.username}`);
+  }
+);
 
-router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), async (req, res) => {
-  const token = generateToken(req.user);
-  res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${token}&userId=${req.user.id}`);
-});
+// Instagram
+router.get('/instagram',
+  passport.authenticate('instagram')
+);
 
-// Instagram OAuth
-router.get('/instagram', passport.authenticate('instagram'));
+router.get('/instagram/callback',
+  passport.authenticate('instagram', { failureRedirect: '/login' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.id }, process.env.JWT_SECRET, { expiresIn: '12h' });
+    res.redirect(`${process.env.CLIENT_URL}/login?token=${token}&userId=${req.user.id}&username=${req.user.username}`);
+  }
+);
 
-router.get('/instagram/callback', passport.authenticate('instagram', { failureRedirect: '/login' }), async (req, res) => {
-  const token = generateToken(req.user);
-  res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${token}&userId=${req.user.id}`);
-});
+// TikTok
+router.get('/tiktok',
+  passport.authenticate('tiktok')
+);
 
-// TikTok OAuth
-router.get('/tiktok', passport.authenticate('tiktok'));
-
-router.get('/tiktok/callback', passport.authenticate('tiktok', { failureRedirect: '/login' }), async (req, res) => {
-  const token = generateToken(req.user);
-  res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${token}&userId=${req.user.id}`);
-});
-
+router.get('/tiktok/callback',
+  passport.authenticate('tiktok', { failureRedirect: '/login' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.id }, process.env.JWT_SECRET, { expiresIn: '12h' });
+    res.redirect(`${process.env.CLIENT_URL}/login?token=${token}&userId=${req.user.id}&username=${req.user.username}`);
+  }
+);
 
 module.exports = router;
