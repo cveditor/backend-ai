@@ -1,4 +1,4 @@
-const passport = require('passport');
+const passport = require('passport-oauth2');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const InstagramStrategy = require('passport-instagram').Strategy;
 const TikTokStrategy = require('passport-tiktok').Strategy;
