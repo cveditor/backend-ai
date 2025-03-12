@@ -1,9 +1,8 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const InstagramStrategy = require('passport-instagram').Strategy;
-const TikTokStrategy = require('passport-tiktok').Strategy;
 const { User } = require('../models');
-const OAuth2Strategy = require('passport-oauth2')
+const OAuth2Strategy = require('passport-oauth2').Strategy;
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
@@ -37,8 +36,8 @@ passport.use(new GoogleStrategy({
 
 // Instagram
 passport.use(new InstagramStrategy({
-  clientID: process.env.INSTAGRAM_CLIENT_ID,
-  clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
+  clientID: process.env.INSTAGRAM_APP_ID,
+  clientSecret: process.env.INSTAGRAM_APP_SECRET,
   callbackURL: `${process.env.BACKEND_URL}/api/auth/instagram/callback`
 }, async (accessToken, refreshToken, profile, done) => {
   try {
@@ -53,9 +52,9 @@ passport.use(new InstagramStrategy({
 }));
 
 // TikTok
-ppassport.use('tiktok', new OAuth2Strategy({authorizationURL: 'https://www.tiktok.com/auth/authorize/',
+passport.use('tiktok', new OAuth2Strategy({authorizationURL: 'https://www.tiktok.com/auth/authorize/',
     tokenURL: 'https://open-api.tiktok.com/oauth/access_token/',
-    clientID: process.env.TIKTOK_CLIENT_ID,
+    clientID: process.env.TIKTOK_CLIENT_KEY,
     clientSecret: process.env.TIKTOK_CLIENT_SECRET,
     callbackURL: process.env.TIKTOK_CALLBACK_URL,
     scope: ['user.info.basic'],
