@@ -1,46 +1,57 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const authMiddleware = require('../middleware/authMiddleware');
+const { User } = require('../models');
+const passport = require('passport');
+const Joi = require('joi');
 
-// Ottieni le impostazioni di notifica di un utente
-router.get('/:userId/notification-settings', authMiddleware, async (req, res) => {
-  const { userId } = req.params;
+// Schema di validazione per aggiornamento profilo
+const updateUserSchema = Joi.object({
+  username: Joi.string().min(3).max(30),
+  email: Joi.string().email(),
+  plan: Joi.string().valid('base', 'pro', 'enterprise'),
+});
 
+// Ottieni dati utente
+router.get('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
   try {
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'Utente non trovato.' });
-    }
+    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'plan', 'createdAt'] });
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
 
-    res.status(200).json({
-      likeThreshold: user.likeThreshold || 100,
-      engagementRateThreshold: user.engagementRateThreshold || 0.2,
-    });
+    res.json(user);
   } catch (err) {
-    console.error('❌ Errore nel recupero delle notifiche:', err.message);
-    res.status(500).json({ error: 'Errore nel recupero delle notifiche.' });
+    console.error('Errore nel recupero del profilo:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
   }
 });
 
-// Aggiorna le impostazioni di notifica
-router.post('/update-notification-settings', authMiddleware, async (req, res) => {
-  const { userId, likeThreshold, engagementRateThreshold } = req.body;
+// Aggiorna dati utente
+router.put('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { error } = updateUserSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
 
   try {
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'Utente non trovato.' });
-    }
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
 
-    user.likeThreshold = likeThreshold;
-    user.engagementRateThreshold = engagementRateThreshold;
-    await user.save();
-
-    res.status(200).json({ message: 'Impostazioni aggiornate correttamente!' });
+    await user.update(req.body);
+    res.json({ message: 'Profilo aggiornato con successo', user });
   } catch (err) {
-    console.error('❌ Errore nell’aggiornamento delle notifiche:', err.message);
-    res.status(500).json({ error: 'Errore durante l’aggiornamento.' });
+    console.error('Errore durante l’aggiornamento del profilo:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
+  }
+});
+
+// Elimina account utente
+router.delete('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+    await user.destroy();
+    res.json({ message: 'Account eliminato con successo' });
+  } catch (err) {
+    console.error('Errore nella cancellazione dell’account:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
   }
 });
 

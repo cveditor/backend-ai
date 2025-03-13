@@ -1,8 +1,9 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const InstagramStrategy = require('passport-instagram').Strategy;
+const OAuth2Strategy = require('passport-oauth2'); // Per TikTok
 const { User } = require('../models');
-const OAuth2Strategy = require('passport-oauth2').Strategy;
+require('dotenv').config();
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
@@ -17,7 +18,7 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// Google
+// Google OAuth
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -34,10 +35,10 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Instagram
+// Instagram OAuth
 passport.use(new InstagramStrategy({
-  clientID: process.env.INSTAGRAM_APP_ID,
-  clientSecret: process.env.INSTAGRAM_APP_SECRET,
+  clientID: process.env.INSTAGRAM_CLIENT_ID,
+  clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
   callbackURL: `${process.env.BACKEND_URL}/api/auth/instagram/callback`
 }, async (accessToken, refreshToken, profile, done) => {
   try {
@@ -51,49 +52,23 @@ passport.use(new InstagramStrategy({
   }
 }));
 
-// TikTok
-passport.use('tiktok', new OAuth2Strategy({authorizationURL: 'https://www.tiktok.com/auth/authorize/',
-    tokenURL: 'https://open-api.tiktok.com/oauth/access_token/',
-    clientID: process.env.TIKTOK_CLIENT_KEY,
-    clientSecret: process.env.TIKTOK_CLIENT_SECRET,
-    callbackURL: process.env.TIKTOK_CALLBACK_URL,
-    scope: ['user.info.basic'],
-  }, async (accessToken, refreshToken, profile, done) => {
-    try {
-      // Recupera le info utente da TikTok
-      const response = await axios.get('https://open-api.tiktok.com/user/info/', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-  
-      const userData = response.data.data.user;
-  
-      let user = await User.findOne({ where: { tiktokId: userData.open_id } });
-  
-      if (!user) {
-        user = await User.create({
-          username: userData.display_name || 'TikTokUser',
-          tiktokId: userData.open_id,
-          email: userData.email || null,
-        });
-      }
-  
-      return done(null, user);
-    } catch (err) {
-      return done(err);
-    }
-  }));
-  
-  passport.serializeUser((user, done) => {
-    done(null, user.id);
-  });
-  
-  passport.deserializeUser(async (id, done) => {
-    try {
-      const user = await User.findByPk(id);
-      done(null, user);
-    } catch (err) {
-      done(err);
-    }
-  });
+// TikTok OAuth
+passport.use('tiktok', new OAuth2Strategy({
+  authorizationURL: 'https://www.tiktok.com/auth/authorize/',
+  tokenURL: 'https://open-api.tiktok.com/oauth/access_token/',
+  clientID: process.env.TIKTOK_CLIENT_ID,
+  clientSecret: process.env.TIKTOK_CLIENT_SECRET,
+  callbackURL: `${process.env.BACKEND_URL}/api/auth/tiktok/callback`
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const [user] = await User.findOrCreate({
+      where: { tiktokId: profile.id },
+      defaults: { username: profile.displayName }
+    });
+    done(null, user);
+  } catch (err) {
+    done(err);
+  }
+}));
+
+module.exports = passport;

@@ -1,34 +1,53 @@
 const express = require('express');
 const router = express.Router();
-const { Notification } = require('../models/index');
-const authMiddleware = require('../middleware/authMiddleware');
+const { Notification } = require('../models');
+const passport = require('passport');
+const { Op } = require('sequelize');
 
-router.get('/history', authMiddleware, async (req, res) => {
-  const userId = req.userId;
-  const { status, page = 1, limit = 10 } = req.query;
-  const offset = (page - 1) * limit;
-
+// Ottieni notifiche utente
+router.get('/', passport.authenticate('jwt', { session: false }), async (req, res) => {
   try {
-    const whereClause = { userId };
-    if (status === 'read') whereClause.isRead = true;
-    if (status === 'unread') whereClause.isRead = false;
-
-    const { rows: notifications, count } = await Notification.findAndCountAll({
-      where: whereClause,
+    const notifications = await Notification.findAll({
+      where: { userId: req.user.id },
       order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: 20, // Ottimizzazione
     });
-
-    res.status(200).json({
-      notifications,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(count / limit),
-      totalCount: count,
-    });
+    res.json(notifications);
   } catch (err) {
-    console.error('❌ Errore nella paginazione delle notifiche:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Errore nel recupero delle notifiche:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
+  }
+});
+
+// Segna una notifica come letta
+router.put('/:id/read', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  try {
+    const notification = await Notification.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    if (!notification) return res.status(404).json({ message: 'Notifica non trovata' });
+
+    await notification.update({ read: true });
+    res.json({ message: 'Notifica segnata come letta' });
+  } catch (err) {
+    console.error('Errore nell aggiornamento della notifica:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
+  }
+});
+
+// Elimina tutte le notifiche lette
+router.delete('/clear', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  try {
+    await Notification.destroy({
+      where: {
+        userId: req.user.id,
+        read: true,
+      },
+    });
+    res.json({ message: 'Notifiche lette eliminate' });
+  } catch (err) {
+    console.error('Errore nell eliminazione delle notifiche:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
   }
 });
 
