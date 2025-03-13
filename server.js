@@ -15,8 +15,8 @@ const { Pool } = require('pg');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const Redis = require('ioredis');
-const redis = new Redis(process.env.REDIS_URL);
+// const Redis = require('ioredis');
+// const redis = new Redis(process.env.REDIS_URL);
 const { handleStripeWebhook } = require('./services/paymentService');
 
 dotenv.config();
@@ -97,39 +97,39 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const triggerRoutes = require('./routes/triggerRoutes');
 const planRoutes = require('./routes/PlanRoutes').router;
 
-// Middleware per cache Redis
-const cache = (req, res, next) => {
-  const key = req.originalUrl;
-  redis.get(key, (err, data) => {
-    if (err) console.error('Errore Redis:', err);
-    if (data) {
-      res.json(JSON.parse(data));
-    } else {
-      next();
-    }
-  });
-};
+// Middleware per cache Redis (disabilitato)
+// const cache = (req, res, next) => {
+//   const key = req.originalUrl;
+//   redis.get(key, (err, data) => {
+//     if (err) console.error('Errore Redis:', err);
+//     if (data) {
+//       res.json(JSON.parse(data));
+//     } else {
+//       next();
+//     }
+//   });
+// };
 
-// Invalida cache dopo aggiornamenti
-const invalidateCache = (req, res, next) => {
-  const routesToClear = ['/api/analytics', '/api/notifications'];
-  routesToClear.forEach((route) => {
-    redis.del(route, (err, result) => {
-      if (err) console.error('Errore eliminazione cache:', err);
-      else console.log(`Cache invalidata per: ${route}`);
-    });
-  });
-  next();
-};
+// Invalida cache dopo aggiornamenti (disabilitato)
+// const invalidateCache = (req, res, next) => {
+//   const routesToClear = ['/api/analytics', '/api/notifications'];
+//   routesToClear.forEach((route) => {
+//     redis.del(route, (err, result) => {
+//       if (err) console.error('Errore eliminazione cache:', err);
+//       else console.log(`Cache invalidata per: ${route}`);
+//     });
+//   });
+//   next();
+// };
 
 // Route principali
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/posts', invalidateCache, postRoutes);
+app.use('/api/posts', postRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/analytics', cache, analyticsRoutes); // cache per analytics
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/trends', trendRoutes);
-app.use('/api/notifications', cache, notificationRoutes); // cache per notifiche
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/triggers', triggerRoutes);
 app.use('/api/plans', planRoutes);
