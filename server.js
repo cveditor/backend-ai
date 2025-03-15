@@ -39,6 +39,7 @@ const corsOptions = {
   credentials: true,
 };
 app.use(cors(corsOptions));
+require('./config/passport');
 
 // Sicurezza
 app.use(helmet());
