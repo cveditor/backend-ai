@@ -1,6 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const TikTokStrategy = require('passport-tiktok-oauth2').Strategy;
+const TikTokStrategy = require('passport-tiktok').Strategy;
 const InstagramStrategy = require('passport-instagram').Strategy;
 const { User } = require('../models');
 
