@@ -1,6 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const TikTokStrategy = require('passport-tiktok').Strategy;
+
 const InstagramStrategy = require('passport-instagram').Strategy;
 const { User } = require('../models');
 
@@ -17,24 +17,6 @@ passport.use(new GoogleStrategy({
     let user = await User.findOne({ where: { email } });
     if (!user) {
       user = await User.create({ username: profile.displayName, email, password: null });
-    }
-    return done(null, user);
-  } catch (err) {
-    return done(err, null);
-  }
-}));
-
-// Configura TikTok OAuth
-passport.use(new TikTokStrategy({
-  clientID: process.env.TIKTOK_CLIENT_KEY,
-  clientSecret: process.env.TIKTOK_CLIENT_SECRET,
-  callbackURL: process.env.TIKTOK_CALLBACK_URL,
-  scope: ['user.info.basic']
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = await User.findOne({ where: { email: profile.id } });
-    if (!user) {
-      user = await User.create({ username: profile.displayName, email: profile.id, password: null });
     }
     return done(null, user);
   } catch (err) {

@@ -5,6 +5,14 @@ const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const { User } = require('../models');
 const Joi = require('joi');
+const axios = require('axios');
+
+const TIKTOK_AUTH_URL = "https://www.tiktok.com/auth/authorize/";
+const TIKTOK_TOKEN_URL = "https://open-api.tiktok.com/oauth/access_token/";
+const CLIENT_ID = process.env.TIKTOK_CLIENT_KEY;
+const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
+const REDIRECT_URI = process.env.TIKTOK_CALLBACK_URL;
+
 
 // Schema di validazione Joi
 const registerSchema = Joi.object({
@@ -90,22 +98,47 @@ router.get('/google/callback',
 );
 
 // TikTok Login
-router.get('/tiktok', passport.authenticate('tiktok'));
+// TikTok Login - Redirect to TikTok OAuth
+router.get('/tiktok', (req, res) => {
+  const authURL = `${TIKTOK_AUTH_URL}?client_key=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user.info.basic&response_type=code`;
+  res.redirect(authURL);
+});
 
-router.get('/tiktok/callback',
-  passport.authenticate('tiktok', { failureRedirect: '/login' }),
-  async (req, res) => {
-    try {
-      let user = await User.findOne({ where: { email: req.user.email } });
-      if (!user) {
-        user = await User.create({ username: req.user.displayName, email: req.user.email, password: null });
-      }
-      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
-    } catch (err) {
-      res.redirect('/login');
+// TikTok Callback - Handle authentication
+router.get('/tiktok/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.status(400).json({ message: "Authorization code missing" });
+
+    // Exchange code for access token
+    const tokenResponse = await axios.post(TIKTOK_TOKEN_URL, {
+      client_key: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      code: code,
+      grant_type: 'authorization_code',
+      redirect_uri: REDIRECT_URI
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+    const userInfo = tokenResponse.data.data;
+
+    if (!userInfo) return res.status(400).json({ message: "Failed to get user info" });
+
+    let user = await User.findOne({ where: { email: userInfo.open_id } });
+    if (!user) {
+      user = await User.create({
+        username: userInfo.display_name || `TikTokUser${Date.now()}`,
+        email: userInfo.open_id,
+        password: null,
+      });
     }
+
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+  } catch (err) {
+    console.error("Errore autenticazione TikTok:", err.response?.data || err.message);
+    res.redirect("/login");
   }
-);
+});
 
 // Instagram Login
 router.get('/instagram', passport.authenticate('instagram'));
