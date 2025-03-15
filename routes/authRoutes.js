@@ -97,7 +97,6 @@ router.get('/google/callback',
   }
 );
 
-// TikTok Login
 // TikTok Login - Redirect to TikTok OAuth
 router.get('/tiktok', (req, res) => {
   const authURL = `${TIKTOK_AUTH_URL}?client_key=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user.info.basic&response_type=code`;
