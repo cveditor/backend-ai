@@ -7,3 +7,4 @@ router.get('/', authMiddleware, getAllPosts); // Richiede autenticazione
 router.post('/', authMiddleware, createPost);
 
 module.exports = router;
+

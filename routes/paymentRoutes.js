@@ -1,15 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const { handleStripeWebhook, createCheckoutSession } = require('../services/paymentService');
-const { ensureAuthenticated } = require('../middleware/authMiddleware');
+
+if (!handleStripeWebhook || !createCheckoutSession) {
+  console.error('❌ Errore: Le funzioni di pagamento non sono definite. Controlla paymentService.js');
+  process.exit(1);
+}
 
 // Webhook Stripe
 router.post('/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 
 // Creazione di una sessione di pagamento
-router.post('/checkout', ensureAuthenticated, async (req, res) => {
+router.post('/checkout', async (req, res) => {
   try {
-    const session = await createCheckoutSession(req.user.id, req.body.plan);
+    const session = await createCheckoutSession(req.body.plan);
     res.json({ url: session.url });
   } catch (err) {
     console.error('Errore nella creazione della sessione di pagamento:', err);

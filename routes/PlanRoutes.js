@@ -74,4 +74,6 @@ const checkPlan = (requiredPlan) => (req, res, next) => {
   next();
 };
 
-module.exports = { router, checkPlan };
+module.exports = router;
+module.exports.checkPlan = checkPlan;
+
