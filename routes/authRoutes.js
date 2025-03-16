@@ -53,9 +53,6 @@ router.post('/register', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
-  const { error } = loginSchema.validate(req.body);
-  if (error) return res.status(400).json({ message: error.details[0].message });
-
   const { email, password } = req.body;
 
   try {
@@ -67,7 +64,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, redirectUrl: `${process.env.CLIENT_URL}/onboarding` });
+    res.json({ token, user });
   } catch (err) {
     res.status(500).json({ message: 'Errore durante il login' });
   }
