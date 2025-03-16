@@ -13,6 +13,11 @@ const CLIENT_ID = process.env.TIKTOK_CLIENT_KEY;
 const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
 const REDIRECT_URI = process.env.TIKTOK_CALLBACK_URL;
 
+const INSTAGRAM_AUTH_URL = "https://api.instagram.com/oauth/authorize";
+const INSTAGRAM_TOKEN_URL = "https://api.instagram.com/oauth/access_token";
+const INSTAGRAM_CLIENT_ID = process.env.INSTAGRAM_APP_ID;
+const INSTAGRAM_CLIENT_SECRET = process.env.INSTAGRAM_APP_SECRET;
+const INSTAGRAM_REDIRECT_URI = process.env.INSTAGRAM_CALLBACK_URL;
 
 // Schema di validazione Joi
 const registerSchema = Joi.object({
@@ -62,7 +67,6 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    // Se login classico, reindirizza all'onboarding per collegare i social
     res.json({ token, redirectUrl: `${process.env.CLIENT_URL}/onboarding` });
   } catch (err) {
     res.status(500).json({ message: 'Errore durante il login' });
@@ -90,26 +94,24 @@ router.get('/google/callback',
       if (!user) {
         user = await User.create({ username: req.user.displayName, email: req.user.email, password: null });
       }
-      res.redirect(`${process.env.CLIENT_URL}/onboarding`);
+      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
     } catch (err) {
       res.redirect('/login');
     }
   }
 );
 
-// TikTok Login - Redirect to TikTok OAuth
+// TikTok Login
 router.get('/tiktok', (req, res) => {
   const authURL = `${TIKTOK_AUTH_URL}?client_key=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user.info.basic&response_type=code`;
   res.redirect(authURL);
 });
 
-// TikTok Callback - Handle authentication
 router.get('/tiktok/callback', async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) return res.status(400).json({ message: "Authorization code missing" });
 
-    // Exchange code for access token
     const tokenResponse = await axios.post(TIKTOK_TOKEN_URL, {
       client_key: CLIENT_ID,
       client_secret: CLIENT_SECRET,
@@ -121,40 +123,40 @@ router.get('/tiktok/callback', async (req, res) => {
     const accessToken = tokenResponse.data.access_token;
     const userInfo = tokenResponse.data.data;
 
-    if (!userInfo) return res.status(400).json({ message: "Failed to get user info" });
-
     let user = await User.findOne({ where: { email: userInfo.open_id } });
     if (!user) {
-      user = await User.create({
-        username: userInfo.display_name || `TikTokUser${Date.now()}`,
-        email: userInfo.open_id,
-        password: null,
-      });
+      user = await User.create({ username: userInfo.display_name, email: userInfo.open_id, password: null });
     }
 
     res.redirect(`${process.env.CLIENT_URL}/dashboard`);
   } catch (err) {
-    console.error("Errore autenticazione TikTok:", err.response?.data || err.message);
-    res.redirect("/login");
+    res.redirect('/login');
   }
 });
 
 // Instagram Login
-router.get('/instagram', passport.authenticate('instagram'));
+router.get('/instagram', (req, res) => {
+  const authURL = `${INSTAGRAM_AUTH_URL}?client_id=${INSTAGRAM_CLIENT_ID}&redirect_uri=${encodeURIComponent(INSTAGRAM_REDIRECT_URI)}&scope=user_profile,user_media&response_type=code`;
+  res.redirect(authURL);
+});
 
-router.get('/instagram/callback',
-  passport.authenticate('instagram', { failureRedirect: '/login' }),
-  async (req, res) => {
-    try {
-      let user = await User.findOne({ where: { email: req.user.email } });
-      if (!user) {
-        user = await User.create({ username: req.user.displayName, email: req.user.email, password: null });
-      }
-      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
-    } catch (err) {
-      res.redirect('/login');
-    }
+router.get('/instagram/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.status(400).json({ message: "Authorization code missing" });
+
+    const tokenResponse = await axios.post(INSTAGRAM_TOKEN_URL, {
+      client_id: INSTAGRAM_CLIENT_ID,
+      client_secret: INSTAGRAM_CLIENT_SECRET,
+      code: code,
+      grant_type: 'authorization_code',
+      redirect_uri: INSTAGRAM_REDIRECT_URI
+    });
+
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+  } catch (err) {
+    res.redirect('/login');
   }
-);
+});
 
 module.exports = router;

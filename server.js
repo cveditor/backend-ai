@@ -3,63 +3,58 @@ const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
 const bodyParser = require('body-parser');
-const cron = require('node-cron');
 const cors = require('cors');
-const { syncDatabase } = require('./models');
-const checkAnalyticsThreshold = require('./utils/checkAnalyticsThreshold');
-const { initSocket, sendNotification, broadcastAnalytics } = require('./utils/realtimeNotifications');
 const passport = require('passport');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
+const { syncDatabase } = require('./models');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-// const Redis = require('ioredis');
-// const redis = new Redis(process.env.REDIS_URL);
 const { handleStripeWebhook } = require('./services/paymentService');
+const checkAnalyticsThreshold = require('./utils/checkAnalyticsThreshold');
+const { initSocket } = require('./utils/realtimeNotifications');
 
 dotenv.config();
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
 
 const app = express();
 const server = http.createServer(app);
 
-// Inizializza Socket.io
-initSocket(server);
-
 // Configura CORS
-const corsOptions = {
+app.use(cors({
   origin: [process.env.CLIENT_URL],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
-};
-app.use(cors(corsOptions));
-require('./config/passport');
+}));
 
-// Sicurezza
+// Sicurezza e logging
 app.use(helmet());
-
-// Log delle richieste
 app.use(morgan('combined'));
 
-// Rate limiting per proteggere le route sensibili
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minuti
-  max: 100, // max 100 richieste per IP
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Troppi tentativi, riprova più tardi.',
 });
 app.use('/api/auth', limiter);
 app.use('/api/payments', limiter);
 
-// Parsing del body
-app.use(bodyParser.json());
 app.use(express.json());
+app.use(bodyParser.json());
 app.use(bodyParser.raw({ type: 'application/json' }));
+
+// Connessione al database PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+pool.connect()
+  .then(() => console.log('✅ Connessione al database PostgreSQL riuscita!'))
+  .catch(err => console.error('❌ Errore nella connessione a PostgreSQL:', err));
 
 // Sessioni PostgreSQL
 app.use(session({
@@ -80,55 +75,27 @@ app.use(session({
 // Passport
 app.use(passport.initialize());
 app.use(passport.session());
+require('./config/passport');
 
-// Test connessione al database
-syncDatabase()
-  .then(() => console.log('✅ Connessione al database riuscita'))
-  .catch((err) => console.error('❌ Errore nella connessione al database:', err));
+// Inizializza Socket.io
+initSocket(server);
 
-// Importa le tue route
+// Importa le route
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
-const postRoutes = require('./routes/postRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const trendRoutes = require('./routes/trendRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const triggerRoutes = require('./routes/triggerRoutes');
-const planRoutes = require('./routes/PlanRoutes').router;
+const planRoutes = require('./routes/planRoutes');
 
-// Middleware per cache Redis (disabilitato)
-// const cache = (req, res, next) => {
-//   const key = req.originalUrl;
-//   redis.get(key, (err, data) => {
-//     if (err) console.error('Errore Redis:', err);
-//     if (data) {
-//       res.json(JSON.parse(data));
-//     } else {
-//       next();
-//     }
-//   });
-// };
-
-// Invalida cache dopo aggiornamenti (disabilitato)
-// const invalidateCache = (req, res, next) => {
-//   const routesToClear = ['/api/analytics', '/api/notifications'];
-//   routesToClear.forEach((route) => {
-//     redis.del(route, (err, result) => {
-//       if (err) console.error('Errore eliminazione cache:', err);
-//       else console.log(`Cache invalidata per: ${route}`);
-//     });
-//   });
-//   next();
-// };
-
-// Route principali
+// Registra le route
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/trends', trendRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
@@ -139,33 +106,34 @@ app.use('/api/plans', planRoutes);
 app.post('/api/payments/webhook', handleStripeWebhook);
 
 // Cron job per le analytics
+const cron = require('node-cron');
 cron.schedule('*/1 * * * *', async () => {
   console.log('🔔 Controllo delle analytics...');
   await checkAnalyticsThreshold();
 });
 
-// Route 404
+// Route di test
+app.get('/api/test', (req, res) => {
+  res.json({ message: '✅ Backend attivo!' });
+});
+
+// Gestione errori
 app.use((req, res) => {
   res.status(404).json({ message: 'Risorsa non trovata' });
 });
 
-// Gestione errori
 app.use((err, req, res, next) => {
   console.error('❌ Errore:', err);
   res.status(500).json({ message: 'Errore interno del server' });
 });
 
 // Avvio del server
-const startServer = async () => {
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, async () => {
   try {
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
+    await syncDatabase();
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
   } catch (err) {
-    console.error('❌ Errore nell’avvio del server:', err.message);
-    process.exit(1);
+    console.error('❌ Errore nell’avvio del server:', err);
   }
-};
-
-startServer();
+});

@@ -18,6 +18,17 @@ const loginSchema = Joi.object({
   password: Joi.string().min(6).required(),
 });
 
+// Ottenere tutti gli utenti (solo per test)
+router.get('/all', async (req, res) => {
+  try {
+    const users = await User.findAll({ attributes: ['id', 'username', 'email'] });
+    res.json(users);
+  } catch (err) {
+    console.error('Errore nel recupero utenti:', err);
+    res.status(500).json({ message: 'Errore nel recupero degli utenti' });
+  }
+});
+
 // Registrazione
 router.post('/register', async (req, res) => {
   const { error } = registerSchema.validate(req.body);
@@ -54,7 +65,6 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    // Se login classico, reindirizza all'onboarding per collegare i social
     res.json({ token, redirectUrl: `${process.env.CLIENT_URL}/onboarding` });
   } catch (err) {
     res.status(500).json({ message: 'Errore durante il login' });
@@ -70,59 +80,5 @@ router.get('/profile', passport.authenticate('jwt', { session: false }), async (
     res.status(500).json({ message: 'Errore nel recupero del profilo' });
   }
 });
-
-// Google Login
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-router.get('/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  async (req, res) => {
-    try {
-      let user = await User.findOne({ where: { email: req.user.email } });
-      if (!user) {
-        user = await User.create({ username: req.user.displayName, email: req.user.email, password: null });
-      }
-      res.redirect(`${process.env.CLIENT_URL}/onboarding`);
-    } catch (err) {
-      res.redirect('/login');
-    }
-  }
-);
-
-// TikTok Login
-router.get('/tiktok', passport.authenticate('tiktok'));
-
-router.get('/tiktok/callback',
-  passport.authenticate('tiktok', { failureRedirect: '/login' }),
-  async (req, res) => {
-    try {
-      let user = await User.findOne({ where: { email: req.user.email } });
-      if (!user) {
-        user = await User.create({ username: req.user.displayName, email: req.user.email, password: null });
-      }
-      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
-    } catch (err) {
-      res.redirect('/login');
-    }
-  }
-);
-
-// Instagram Login
-router.get('/instagram', passport.authenticate('instagram'));
-
-router.get('/instagram/callback',
-  passport.authenticate('instagram', { failureRedirect: '/login' }),
-  async (req, res) => {
-    try {
-      let user = await User.findOne({ where: { email: req.user.email } });
-      if (!user) {
-        user = await User.create({ username: req.user.displayName, email: req.user.email, password: null });
-      }
-      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
-    } catch (err) {
-      res.redirect('/login');
-    }
-  }
-);
 
 module.exports = router;

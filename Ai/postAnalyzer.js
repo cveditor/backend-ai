@@ -1,10 +1,22 @@
-// Calcola la performance del post (engagement)
-const calculateEngagementRate = (likes = 0, comments = 0, shares = 0, followers = 1) => {
-    if (followers <= 0) {
-      return 0; // Per evitare divisioni per zero
+const express = require('express');
+const router = express.Router();
+const { analyzePost } = require('../services/postAnalyzerService');
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
+
+// Analizza un post
+router.post('/analyze', ensureAuthenticated, async (req, res) => {
+  try {
+    const { postContent } = req.body;
+    if (!postContent) {
+      return res.status(400).json({ message: 'Contenuto del post richiesto' });
     }
-    return ((likes + comments + shares) / followers) * 100;
-  };
-  
-  module.exports = { calculateEngagementRate };
-  
+
+    const analysis = await analyzePost(postContent);
+    res.json({ analysis });
+  } catch (err) {
+    console.error('Errore nell analisi del post:', err);
+    res.status(500).json({ message: 'Errore interno del server' });
+  }
+});
+
+module.exports = router;

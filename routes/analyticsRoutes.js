@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { Analytics } = require('../models');
-const passport = require('passport');
 const { Op } = require('sequelize');
 const Joi = require('joi');
 
@@ -14,14 +13,14 @@ const filterSchema = Joi.object({
 });
 
 // Ottieni analytics con filtri
-router.get('/', passport.authenticate('jwt', { session: false }), async (req, res) => {
+router.get('/', async (req, res) => {
   const { error, value } = filterSchema.validate(req.query);
   if (error) return res.status(400).json({ message: error.details[0].message });
 
   const { startDate, endDate, platform, limit } = value;
 
   try {
-    const filters = { userId: req.user.id };
+    const filters = {};
 
     if (startDate && endDate) {
       filters.createdAt = { [Op.between]: [startDate, endDate] };
@@ -44,10 +43,9 @@ router.get('/', passport.authenticate('jwt', { session: false }), async (req, re
 });
 
 // Ottieni riepilogo delle metriche
-router.get('/summary', passport.authenticate('jwt', { session: false }), async (req, res) => {
+router.get('/summary', async (req, res) => {
   try {
     const summary = await Analytics.findAll({
-      where: { userId: req.user.id },
       attributes: [
         'platform',
         [sequelize.fn('SUM', sequelize.col('likes')), 'totalLikes'],
