@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getTrendingTopics, generatePostIdeas } = require('../Ai/trendAnalyzer');
-const authMiddleware = require('../middleware/authMiddleware');
+const { jwtAuth } = require('../middleware/authMiddleware');
 
 // Controlla che le funzioni siano correttamente importate
 if (typeof getTrendingTopics !== 'function' || typeof generatePostIdeas !== 'function') {
@@ -9,18 +9,18 @@ if (typeof getTrendingTopics !== 'function' || typeof generatePostIdeas !== 'fun
 }
 
 // Recupera i trending topic da TikTok o Instagram
-router.get('/trends', async (req, res) => {
-  const { platform } = req.query;
 
-  if (!['tiktok', 'instagram'].includes(platform)) {
-    return res.status(400).json({ error: 'Specifica una piattaforma valida (tiktok, instagram).' });
-  }
 
+router.get('/trends', jwtAuth, async (req, res) => {
   try {
-    const trends = await getTrendingTopics(platform);
-    if (!Array.isArray(trends)) {
-      throw new Error('Dati ricevuti in un formato errato');
+    const { platform } = req.query;
+    if (!platform || !['tiktok', 'instagram'].includes(platform)) {
+      return res.status(400).json({ error: 'Specifica una piattaforma valida (tiktok, instagram).' });
     }
+
+    const trends = await getTrendingTopics(platform);
+    res.json({ trends });
+  
 
     const trendIdeas = await Promise.all(
       trends.map(async (trend) => {
