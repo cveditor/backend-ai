@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { User, PlanLog } = require('../models');
-const authMiddleware = require('../middleware/authMiddleware');
+const { jwtAuth } = require('../middleware/authMiddleware'); // ✅ Import corretto del middleware
 const Joi = require('joi');
 const { Op } = require('sequelize');
 
@@ -13,21 +13,21 @@ const planSchema = Joi.object({
   plan: Joi.string().valid(...allowedPlans).required(),
 });
 
-// Recupera il piano dell'utente (ottimizzato)
-router.get('/user/plan', authMiddleware, async (req, res) => {
+// Recupera il piano dell'utente
+router.get('/user/plan', jwtAuth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, { attributes: ['plan'] });
     if (!user) return res.status(404).json({ message: 'Utente non trovato' });
 
     res.json({ plan: user.plan });
   } catch (err) {
-    console.error('Errore nel recupero del piano:', err);
+    console.error('❌ Errore nel recupero del piano:', err);
     res.status(500).json({ message: 'Errore nel recupero del piano' });
   }
 });
 
 // Aggiorna il piano dell'utente con validazione e transazioni
-router.post('/user/update-plan', authMiddleware, async (req, res) => {
+router.post('/user/update-plan', jwtAuth, async (req, res) => {
   const { error } = planSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
 
@@ -42,15 +42,15 @@ router.post('/user/update-plan', authMiddleware, async (req, res) => {
       user.update({ plan }),
     ]);
 
-    res.json({ message: `Piano aggiornato a ${plan}`, plan });
+    res.json({ message: `✅ Piano aggiornato a ${plan}`, plan });
   } catch (err) {
-    console.error('Errore durante l aggiornamento del piano:', err);
-    res.status(500).json({ message: 'Errore durante l aggiornamento del piano' });
+    console.error('❌ Errore durante l’aggiornamento del piano:', err);
+    res.status(500).json({ message: 'Errore durante l’aggiornamento del piano' });
   }
 });
 
-// Recupera la cronologia dei cambiamenti di piano (ottimizzato)
-router.get('/user/plan-history', authMiddleware, async (req, res) => {
+// Recupera la cronologia dei cambiamenti di piano
+router.get('/user/plan-history', jwtAuth, async (req, res) => {
   try {
     const logs = await PlanLog.findAll({
       where: { userId: req.user.id },
@@ -61,7 +61,7 @@ router.get('/user/plan-history', authMiddleware, async (req, res) => {
 
     res.json(logs);
   } catch (err) {
-    console.error('Errore nel recupero della cronologia dei piani:', err);
+    console.error('❌ Errore nel recupero della cronologia dei piani:', err);
     res.status(500).json({ message: 'Errore nel recupero della cronologia dei piani' });
   }
 });
@@ -69,11 +69,10 @@ router.get('/user/plan-history', authMiddleware, async (req, res) => {
 // Middleware per limitare l'accesso in base al piano
 const checkPlan = (requiredPlan) => (req, res, next) => {
   if (req.user.plan !== requiredPlan) {
-    return res.status(403).json({ message: 'Accesso negato, piano non autorizzato' });
+    return res.status(403).json({ message: '❌ Accesso negato, piano non autorizzato' });
   }
   next();
 };
 
 module.exports = router;
 module.exports.checkPlan = checkPlan;
-
