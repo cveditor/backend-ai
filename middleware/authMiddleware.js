@@ -1,20 +1,15 @@
-const jwt = require('jsonwebtoken');
+const passport = require('passport');
 
-const ensureAuthenticated = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: '🔒 Accesso negato: token mancante o non valido' });
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;  // ✅ Assegna l'utente alla richiesta
+// Middleware per proteggere le route con autenticazione JWT
+const authMiddleware = (req, res, next) => {
+  passport.authenticate('jwt', { session: false }, (err, user) => {
+    if (err || !user) {
+      console.error('🔒 Accesso negato: utente non autenticato');
+      return res.status(401).json({ message: 'Accesso negato, token non valido' });
+    }
+    req.user = user;
     next();
-  } catch (err) {
-    return res.status(401).json({ message: '🔒 Token non valido' });
-  }
+  })(req, res, next);
 };
 
-module.exports = { ensureAuthenticated };
+module.exports = authMiddleware;
