@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const { User } = require('../models');
 const Joi = require('joi');
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
+
 
 // Schema di validazione Joi
 const registerSchema = Joi.object({
@@ -72,12 +74,22 @@ router.post('/login', async (req, res) => {
 });
 
 // Profilo protetto
-router.get('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
+router.get('/profile', ensureAuthenticated, async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'plan'] });
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: '🔒 Accesso negato: utente non autenticato' });
+    }
+
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'username', 'email', 'subscriptionPlan'],
+    });
+
+    if (!user) return res.status(404).json({ message: '❌ Utente non trovato' });
+
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: 'Errore nel recupero del profilo' });
+    console.error('❌ Errore nel recupero del profilo:', err);
+    res.status(500).json({ message: '❌ Errore interno del server' });
   }
 });
 

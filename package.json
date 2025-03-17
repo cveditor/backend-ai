@@ -36,6 +36,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-instagram": "^1.0.0",
+    "passport-jwt": "^4.0.1",
     "passport-oauth2": "^1.8.0",
     "passport-tiktok": "^0.0.0",
     "pg": "^8.13.3",
