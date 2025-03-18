@@ -15,6 +15,14 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     },
   },
 });
+const syncDatabase = async () => {
+  try {
+    await sequelize.sync({ alter: true }); // Alter per aggiornare le colonne
+    console.log('✅ Database sincronizzato correttamente.');
+  } catch (err) {
+    console.error('❌ Errore nella sincronizzazione del database:', err);
+  }
+};
 
 sequelize.authenticate()
   .then(() => console.log('✅ Connessione a PostgreSQL riuscita!'))
