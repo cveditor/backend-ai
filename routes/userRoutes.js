@@ -8,15 +8,30 @@ const { User } = require('../models');
 // **PROFILO UTENTE**
 router.get('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
   try {
+    console.log("🔍 Middleware JWT - req.user:", req.user); // Aggiungi questo log
+
+    if (!req.user || !req.user.id) {
+      console.error("❌ ERRORE: req.user è undefined o manca l'ID!");
+      return res.status(401).json({ message: "Token non valido o scaduto" });
+    }
+
+    console.log("🔍 Richiesta profilo per utente ID:", req.user.id);
+
     const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'plan'] });
-    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+    if (!user) {
+      console.error("❌ Utente non trovato nel DB!");
+      return res.status(404).json({ message: 'Utente non trovato' });
+    }
 
     res.json(user);
   } catch (err) {
-    console.error('Errore nel recupero del profilo:', err);
-    res.status(500).json({ message: 'Errore nel recupero del profilo' });
+    console.error("❌ Errore nel recupero del profilo:", err);
+    res.status(500).json({ message: 'Errore interno del server' });
   }
 });
+
+
 
 // **REGISTRAZIONE**
 router.post('/register', async (req, res) => {

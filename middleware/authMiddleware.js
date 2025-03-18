@@ -1,6 +1,7 @@
 const passport = require('passport');
 
 const jwtAuth = (req, res, next) => {
+  console.log("🔍 Middleware - Utente autenticato:", req.user);
   console.log("Token ricevuto:", req.headers.authorization); // 🔍 Verifica se il token arriva
 
   passport.authenticate('jwt', { session: false }, (err, user) => {
