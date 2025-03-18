@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
 // Profilo protetto
 router.get('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'subscriptionPlan'] });
+    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'Plan'] });
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: 'Errore nel recupero del profilo' });
