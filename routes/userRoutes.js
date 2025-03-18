@@ -17,7 +17,7 @@ router.get('/profile', passport.authenticate('jwt', { session: false }), async (
 
     console.log("🔍 Richiesta profilo per utente ID:", req.user.id);
 
-    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'plan'] });
+    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'subscriptionPlan'] });
 
     if (!user) {
       console.error("❌ Utente non trovato nel DB!");

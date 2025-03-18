@@ -25,7 +25,7 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  subscriptionPlan: {
+  Plan: {
     type: DataTypes.ENUM('basic', 'premium', 'pro'),
     defaultValue: 'basic',
   },
