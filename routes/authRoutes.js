@@ -53,6 +53,9 @@ router.post('/register', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
+  const { error } = loginSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
+
   const { email, password } = req.body;
 
   try {
@@ -64,7 +67,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user });
+    res.json({ token, redirectUrl: `${process.env.CLIENT_URL}/onboarding` });
   } catch (err) {
     res.status(500).json({ message: 'Errore durante il login' });
   }
@@ -73,7 +76,7 @@ router.post('/login', async (req, res) => {
 // Profilo protetto
 router.get('/profile', passport.authenticate('jwt', { session: false }), async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'plan'] });
+    const user = await User.findByPk(req.user.id, { attributes: ['username', 'email', 'subscriptionPlan'] });
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: 'Errore nel recupero del profilo' });
@@ -157,3 +160,4 @@ router.get('/instagram/callback', async (req, res) => {
 });
 
 module.exports = router;
+
