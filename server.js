@@ -20,6 +20,7 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+app.set('trust proxy', 1);
 
 // Configura CORS
 app.use(cors({
@@ -90,7 +91,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const triggerRoutes = require('./routes/triggerRoutes');
 const planRoutes = require('./routes/planRoutes');
- 
+
 
 // Registra le route
 app.use('/api/auth', authRoutes);
