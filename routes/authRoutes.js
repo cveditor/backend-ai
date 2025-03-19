@@ -69,7 +69,7 @@ if (!isMatch) {
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, redirectUrl: `${process.env.CLIENT_URL}/onboarding` });
+    res.json({ token, user, redirectUrl: `${process.env.CLIENT_URL}/onboarding` });
   } catch (err) {
     res.status(500).json({ message: 'Errore durante il login' });
   }
